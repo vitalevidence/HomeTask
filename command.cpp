@@ -53,22 +53,22 @@ bool sendCommand(int sock, const Command & cmd) {
     return true;
 }
 
-std::expected<Data, int>  WaitAck(int sock, Command::Type type) 
+std::expected<Data, int> WaitPacket(int sock, Command::Type type) 
 {
     std::array<pollfd, 1> fds = {{sock, POLLIN, 0}};
     int ret = poll(fds.data(), fds.size(), 1000);//Configure timeout
     if (ret < 0) {
         std::cerr << "poll " << strerror(errno) << std::endl;
-        return false;
+        return std::unexpected(-1);
     }
     if (ret == 0) {
         std::cerr << "poll timeout" << std::endl;
-        return false;
+        return std::unexpected(-1);
     }
 
     if (!(fds[0].revents & POLLIN)) {
         std::cerr << "No data available for reading" << std::endl;
-        return false;
+        return std::unexpected(-1);
     }
 
     PacketBuffer buffer;
@@ -77,24 +77,24 @@ std::expected<Data, int>  WaitAck(int sock, Command::Type type)
     std::cout << "Reading from socket, bytes read: " << bytes_read << std::endl;
     if(bytes_read < 0) {
         std::cerr << "Failed to read from socket: " << strerror(errno) << std::endl;
-        return false;
+        return std::unexpected(-1);
     }
     //std::cout << "1Reading from socket, bytes read: " << bytes_read << std::endl;
 
     Command command(bytes_read, buffer);
-    switch(expected_ack.type())
-    {
-        case Command::Type::ACK:
-            std::cout << "Received ACK" << std::endl;
-            break;
-        case Command::Type::ERROR:
-            std::cerr << "Received ERROR command: " << expected_ack.asString() << std::endl;
-            return false;
-        default:
-            std::cerr << "Received unexpected command type: " << static_cast<int>(expected_ack.type()) << std::endl;
-            return false;
+    if(command.type() == type) {
+        std::cout << "Received command type: " << static_cast<int>(command.type()) << std::endl;
+        return command.asData();
     }
-    return true;
+    switch(command.type())
+    {
+        case Command::Type::ERROR:
+            std::cerr << "Received ERROR command: " << command.asString() << std::endl;
+            return std::unexpected(-1);
+        default:
+            std::cerr << "Received unexpected command type: " << static_cast<int>(command.type()) << std::endl;
+            return std::unexpected(-1);
+    }
 }
 
 bool sendCommandWaitAck(int sock, const Command & cmd){
@@ -102,7 +102,7 @@ bool sendCommandWaitAck(int sock, const Command & cmd){
         std::cerr << "Failed to send command" << std::endl;
         return false;
     }
-    if (!WaitAck(sock)) {
+    if (!WaitPacket(sock, Command::Type::ACK)) {
         std::cerr << "Failed to receive ACK" << std::endl;
         return false;
     }

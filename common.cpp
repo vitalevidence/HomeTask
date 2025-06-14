@@ -9,10 +9,4 @@ std::ostream& operator<<(std::ostream& os, const std::vector<unsigned char>& dat
 
 Data toData(const std::string_view & str){
     return Data(str.begin(), str.end());
-
-    /*
-    Data data(str.size() + 1);
-    std::copy(str.begin(), str.end(), data.begin());
-    data.back() = '\0'; 
-    return data;*/
 }
