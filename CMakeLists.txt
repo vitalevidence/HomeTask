@@ -40,13 +40,24 @@ target_link_libraries(${TARGET_send} PRIVATE crypto command)
 add_executable(${TARGET_receive} receive.cpp)
 target_link_libraries(${TARGET_receive} PRIVATE server crypto command)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/private.pem
-        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+add_subdirectory(tests)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/public.pem
-        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/private.pem ${CMAKE_CURRENT_BINARY_DIR}/public.pem
+    COMMAND ${CMAKE_COMMAND} -E echo "Generating RSA keys..."
+    COMMAND openssl genpkey -algorithm RSA -out ${CMAKE_CURRENT_BINARY_DIR}/private.pem -pkeyopt rsa_keygen_bits:2048
+    COMMAND openssl rsa -pubout -in ${CMAKE_CURRENT_BINARY_DIR}/private.pem -out ${CMAKE_CURRENT_BINARY_DIR}/public.pem
+    COMMENT "Generating RSA private and public keys"
+    VERBATIM
+)
+
+add_custom_target(generate_keys ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/private.pem ${CMAKE_CURRENT_BINARY_DIR}/public.pem
+)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/demo.sh
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
-add_subdirectory(tests)
+add_custom_target(demoScipt ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/demo.sh
+)
