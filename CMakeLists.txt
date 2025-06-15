@@ -57,7 +57,3 @@ add_custom_target(generate_keys ALL
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/demo.sh
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
-
-add_custom_target(demoScipt ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/demo.sh
-)

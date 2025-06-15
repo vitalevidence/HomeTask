@@ -13,6 +13,7 @@ struct ServerContext
     std::time_t last_access_time;  // Last access time for the server context
     std::string filename;          // File to be sent or received
     std::fstream file_stream;      // File stream for reading or writing
+    std::filesystem::path path;
     IV iv;                         // Initialization vector for encryption
     KEY key;                       // Key for encryption
     SEED seed_data;                // Seed data for the session
@@ -30,19 +31,19 @@ struct ServerContext
         }
         memcpy(&file_size, new_filename.data(), sizeof(file_size)); // Copy file size from the string
         filename =std::string(new_filename.begin() + sizeof(file_size), new_filename.end());
-        file_stream.open(filename, std::ios::out | std::ios::binary);
+        file_stream.open(path / filename, std::ios::out | std::ios::binary);
         if (!file_stream.is_open())
         {
             throw std::runtime_error("Failed to open file: " + filename);
         }
-        std::cout << "Opened " << filename << " expected " << file_size << " bytes" << std::endl;
+        std::cout << "Opened " << path / filename << " expected " << file_size << " bytes" << std::endl;
         updateAccessTime();
     }
 
     void resumeFile(const std::string &new_filename)
     {
         filename = new_filename;
-        file_stream.open(filename, std::ios::app | std::ios::binary);
+        file_stream.open(path / filename, std::ios::app | std::ios::binary);
         if (!file_stream.is_open())
         {
             throw std::runtime_error("Failed to open file: " + filename);
@@ -112,7 +113,7 @@ struct ServerContext
         updateAccessTime();
     }
 
-    ServerContext() : last_access_time(std::time(nullptr)), file_stream{}
+    ServerContext(const std::filesystem::path & path) : last_access_time(std::time(nullptr)), file_stream{}, path{path}
     {
         // Initialize the file stream to an empty state
     }

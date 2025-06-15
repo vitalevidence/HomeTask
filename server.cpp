@@ -128,7 +128,7 @@ bool ProcessCommand(const Command &cmd, ServerContext &server_ctx, RSACipher & r
     return true;
 }
 
-ErrorCode run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
+ErrorCode run_multiple_server_poll(uint16_t PORT, RSACipher & rsa, const std::filesystem::path & path)
 {
     sockaddr_in address;
     int addrlen = sizeof(address);
@@ -158,7 +158,7 @@ ErrorCode run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
     std::vector<ServerContext> contexts;//reserve(1024); // One context per fd
     std::vector<pollfd> fds;
     fds.push_back({server_fd, POLLIN, 0});
-    contexts.emplace_back(); // Add a default ServerContext for the server socket
+    contexts.emplace_back(path); // Add a default ServerContext for the server socket
 
     for(;;) {
         int ret = poll(fds.data(), fds.size(), -1);//TODO timeout?
@@ -181,7 +181,7 @@ ErrorCode run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
                         continue;
                     }
                     fds.push_back({new_socket, POLLIN, 0});
-                    contexts.emplace_back(); // Add a new ServerContext for the new socket
+                    contexts.emplace_back(path); // Add a new ServerContext for the new socket
                     std::cout << "New connection accepted on fd: " << new_socket << std::endl;
                     SendSeed(contexts.back(), new_socket);
                     continue;

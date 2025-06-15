@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     uint16_t port = static_cast<uint16_t>(std::stoi(argv[2]));
-    //auto path = std::string_view{argv[4]};
+    auto path = std::filesystem::path{argv[4]};
 
     std::signal(SIGINT, signal_handler);
 
@@ -29,6 +29,6 @@ int main(int argc, char* argv[]) {
         return (int)ErrorCode::RSA_Key;
     }
     
-    return static_cast<int>(run_multiple_server_poll(port, rsa));
+    return static_cast<int>(run_multiple_server_poll(port, rsa, path));
 }
 

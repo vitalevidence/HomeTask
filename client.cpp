@@ -14,7 +14,7 @@
 #include "client.h"
 
 // TCP client: sends a file to the server
-ErrorCode run_client(const std::string_view & server_ip, const std::string_view & filename, uint16_t PORT, RSACipher & rsa) {
+ErrorCode run_client(const std::string_view & server_ip, const std::filesystem::path & filepath, const std::string &out_filename, uint16_t PORT, RSACipher & rsa) {
     sockaddr_in serv_addr;
 
     auto sock = RAII_Socket(socket(AF_INET, SOCK_STREAM, 0));
@@ -98,14 +98,14 @@ ErrorCode run_client(const std::string_view & server_ip, const std::string_view 
         return ErrorCode::AES;
     }
 
-    std::ifstream infile(filename.data(), std::ios::binary);
+    std::ifstream infile(filepath, std::ios::binary);
     if (!infile) {
-        std::cerr << "Failed to open input file " << filename << std::endl;
+        std::cerr << "Failed to open input file " << filepath << std::endl;
         return ErrorCode::IO;
     }
 
-    const uint32_t file_size = std::filesystem::file_size(filename);//Size stored in 4 bytes!
-    std::string fileDataStr{"1234received_file"};
+    const uint32_t file_size = std::filesystem::file_size(filepath);//Size stored in 4 bytes!
+    std::string fileDataStr{std::string("1234") + out_filename};
     memcpy(fileDataStr.data(), &file_size, sizeof(file_size)); 
     Command begin_cmd(Command::Type::BEGIN_FILE, fileDataStr);
     if(!sendCommandWaitAck(*sock, begin_cmd))
