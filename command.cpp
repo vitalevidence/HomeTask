@@ -18,9 +18,10 @@ Command::Command(size_t size, const PacketBuffer & data){
     if(type_ <= Type::NONE || type_ >= Type::LAST) {
         std::cerr << "Invalid Command type: " << static_cast<int>(type_) << std::endl;
         //throw std::invalid_argument("Invalid Command type");
+        return;
     }
 
-    std::cout << "Command "<< size << " " << data.size() << " " << (int)data[0]<< std::endl;
+    //std::cout << "Command "<< size << " " << data.size() << " " << (int)data[0]<< std::endl;
 
     data_ = std::vector<unsigned char>(data.begin() + sizeof(Type), data.begin() + size);
     if (data_.size() != size - sizeof(Type)) {
@@ -35,9 +36,8 @@ std::string Command::asString() const{
 }
 
 bool sendCommand(int sock, const Command & cmd) {
-    std::cout << "Sending command of type: " << static_cast<int>(cmd.type()) << " with size: " << cmd.size() << std::endl;
+    //std::cout << "Sending command of type: " << static_cast<int>(cmd.type()) << " with size: " << cmd.size() << std::endl;
     PacketBuffer buffer;
-    //memset(buffer.data(), 0, buffer.size()); 
     buffer[0] = static_cast<unsigned char>(cmd.type());
     const auto & data = cmd.asData();
     if(!data.empty()){

@@ -29,7 +29,6 @@ int main(int argc, char* argv[]) {
         return (int)ErrorCode::RSA_Key;
     }
     
-    run_multiple_server_poll(port, rsa);
-    return 0;
+    return static_cast<int>(run_multiple_server_poll(port, rsa));
 }
 

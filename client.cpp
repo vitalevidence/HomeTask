@@ -36,22 +36,28 @@ ErrorCode run_client(const std::string_view & server_ip, const std::string_view 
         return ErrorCode::Network;
     }
 
-    /*
-    auto opts = fcntl(sock,F_GETFL);
-    if (opts < 0) {
-        std::cerr << "fcntl(F_GETFL)";
-        return;
+    //Receive SEED command
+    Data seed_data;
+    {
+        auto maybe_seed = WaitPacket(*sock, Command::Type::SEED);
+        if (!maybe_seed) {
+            std::cerr << "Failed to receive SEED command: " << maybe_seed.error() << std::endl;
+            return ErrorCode::Authentication;
+        }
+        seed_data = *maybe_seed;
+        if( seed_data.size() < 16) {
+            std::cerr << "Invalid SEED command size: " << seed_data.size() << std::endl;
+            return ErrorCode::Authentication;
+        }
     }
-    std::cout << "Socket options: " << opts << std::endl;
-    opts = (opts && !O_NONBLOCK);
-    std::cout << "Socket options: " << opts << std::endl;
-    if (fcntl(sock,F_SETFL,opts) < 0) {
-        std::cerr <<"fcntl(F_SETFL)";
-        return;
-    }
-*/
+
     {    // Send Hello message
-        auto encrypted_Hello = rsa.encrypt(toData(HelloMessage));
+        auto msgHello = toData(HelloMessage);
+        for(size_t i = 0; i < msgHello.size(); ++i) {
+            msgHello[i] ^= seed_data[i % seed_data.size()]; // XOR with SEED
+        }
+
+        auto encrypted_Hello = rsa.encrypt(msgHello);
         if (!encrypted_Hello) {
             std::cerr << "Failed to encrypt Hello message: " << encrypted_Hello.error() << std::endl;
             return ErrorCode::AES;

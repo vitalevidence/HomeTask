@@ -6,6 +6,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <set>
+#include <algorithm>
 
 #include "command.h"
 #include "common.h"
@@ -36,6 +37,19 @@ bool ProcessIV_KEY(const Data &data, RSACipher & rsa, ServerContext &server_ctx)
     return true;
 }
 
+bool SendSeed(ServerContext &server_ctx, int sock)
+{
+    auto & seed_data = server_ctx.seed_data;
+    std::generate(seed_data.begin(), seed_data.end(), []() { return static_cast<unsigned char>(std::rand() % 256); });
+    
+    Command seed_cmd(Command::Type::SEED, seed_data);
+    if (!sendCommand(sock, seed_cmd)) {
+        std::cerr << "Failed to send SEED command" << std::endl;
+        return false;
+    }
+    return true;
+}
+
 bool CheckAutentication(const Command &cmd, RSACipher & rsa, ServerContext &server_ctx)
 {
     if (server_ctx.is_authenticated){
@@ -53,9 +67,13 @@ bool CheckAutentication(const Command &cmd, RSACipher & rsa, ServerContext &serv
             return false;
         }
 
-        std::cout << "Decrypted session key: " << *decrypted_msg << std::endl;
+        const auto & seed_data = server_ctx.seed_data;
+        auto maybeHello = *decrypted_msg;
+        for(size_t i = 0; i < HelloMessage.size(); ++i) {
+            maybeHello[i] ^= seed_data[i % seed_data.size()]; // XOR with SEED
+        }
 
-        if (memcmp(decrypted_msg->data(), HelloMessage.data(), HelloMessage.size()) != 0)
+        if (memcmp(maybeHello.data(), HelloMessage.data(), HelloMessage.size()) != 0)
         {
             std::cerr << "Encrypted Hello message " << cmd.asData() << std::endl;
             std::cerr << "Decrypted key does not match original session key." << std::endl;
@@ -109,15 +127,15 @@ bool ProcessCommand(const Command &cmd, ServerContext &server_ctx, RSACipher & r
     return true;
 }
 
-void run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
+ErrorCode run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
 {
-    struct sockaddr_in address;
+    sockaddr_in address;
     int addrlen = sizeof(address);
 
     auto server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == 0) {
-        perror("socket failed");
-        return;
+        std::cerr <<"socket failed" << std::endl;
+        return ErrorCode::Network;
     }
 
     address.sin_family = AF_INET;
@@ -125,14 +143,14 @@ void run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
     address.sin_port = htons(PORT);
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("bind failed");
+        std::cerr <<"bind failed"<< std::endl;
         close(server_fd);
-        return;
+        return ErrorCode::Network;
     }
     if (listen(server_fd, 10) < 0) {
-        perror("listen");
+        std::cerr << "listen" << strerror(errno) << " " << errno << std::endl;
         close(server_fd);
-        return;
+        return ErrorCode::Network;
     }
     std::cout << "Server (poll) listening on port " << PORT << std::endl;
 
@@ -164,6 +182,7 @@ void run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
                     fds.push_back({new_socket, POLLIN, 0});
                     contexts.emplace_back(); // Add a new ServerContext for the new socket
                     std::cout << "New connection accepted on fd: " << new_socket << std::endl;
+                    SendSeed(contexts.back(), new_socket);
                     continue;
                 }
 
@@ -201,4 +220,5 @@ void run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
         }
     }
     close(server_fd);
+    return ErrorCode::Success;
 }

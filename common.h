@@ -9,14 +9,17 @@
 constexpr size_t BUFFER_SIZE = 1490; //Fit MTU size for network packets
 using PacketBuffer = std::array<unsigned char, BUFFER_SIZE>;
 
-constexpr static size_t BLOCK_SIZE = 16; // AES block size in bytes
-constexpr static size_t KEY_SIZE = 16;   // AES key size in bytes (128 bits)
-constexpr static size_t IV_SIZE = 16;    // AES IV size in bytes (128 bits)
+constexpr size_t BLOCK_SIZE = 16; // AES block size in bytes
+constexpr size_t KEY_SIZE = 16;   // AES key size in bytes (128 bits)
+constexpr size_t IV_SIZE = 16;    // AES IV size in bytes (128 bits)
 
 using IV = std::array<unsigned char, IV_SIZE>;
 using KEY = std::array<unsigned char, KEY_SIZE>;
 
 using Data = std::vector<unsigned char>;
+
+constexpr size_t SEED_SIZE = 17; // Size of the SEED command data
+using SEED = std::array<unsigned char, SEED_SIZE>;
 
 enum class ErrorCode{
     Success = 0,

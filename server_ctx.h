@@ -13,6 +13,7 @@ struct ServerContext {
     std::fstream file_stream; // File stream for reading or writing
     IV iv; // Initialization vector for encryption
     KEY key; // Key for encryption
+    SEED seed_data; // Seed data for the session
 
     void updateAccessTime() {
         last_access_time = std::time(nullptr);

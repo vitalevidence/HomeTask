@@ -41,6 +41,10 @@ struct Command {
     Command(Type type, const std::vector<unsigned char> & data)
         : type_(type), data_(data){}
 
+    template<size_t Sz>
+    Command(Type type, const std::array<unsigned char, Sz> & data)
+        : type_(type), data_(data.begin(), data.end()){}
+
     Command(Type type, const std::string_view & str)
     : type_(type), data_(str.begin(), str.end()){std::cout << "Command sv " << (int)type_ << " " << data_ << " " << data_.size() << std::endl;}
 
