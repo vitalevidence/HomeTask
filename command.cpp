@@ -74,16 +74,15 @@ std::expected<Data, int> WaitPacket(int sock, Command::Type type)
     PacketBuffer buffer;
     ssize_t bytes_read;
     bytes_read = read(sock, buffer.data(), buffer.size());
-    std::cout << "Reading from socket, bytes read: " << bytes_read << std::endl;
+    //std::cout << "Reading from socket, bytes read: " << bytes_read << std::endl;
     if(bytes_read < 0) {
         std::cerr << "Failed to read from socket: " << strerror(errno) << std::endl;
         return std::unexpected(-1);
     }
-    //std::cout << "1Reading from socket, bytes read: " << bytes_read << std::endl;
 
     Command command(bytes_read, buffer);
     if(command.type() == type) {
-        std::cout << "Received command type: " << static_cast<int>(command.type()) << std::endl;
+        //std::cout << "Received command type: " << static_cast<int>(command.type()) << std::endl;
         return command.asData();
     }
     switch(command.type())

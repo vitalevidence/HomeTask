@@ -109,7 +109,7 @@ bool ProcessCommand(const Command &cmd, ServerContext &server_ctx, RSACipher & r
         server_ctx.resumeFile(cmd.asString());
         break;
     case Command::Type::FILE_BLOCK:
-        std::cout << "Received FILE_BLOCK command with data size: " << cmd.asData().size() << std::endl;
+        //std::cout << "Received FILE_BLOCK command with data size: " << cmd.asData().size() << std::endl;
         server_ctx.writeFileBlock(cmd.asData());
         break;
     case Command::Type::END_FILE:
@@ -176,7 +176,7 @@ ErrorCode run_multiple_server_poll(uint16_t PORT, RSACipher & rsa)
                 if (fds[i].fd == server_fd) {
                     int new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
                     if (new_socket < 0) {
-                        perror("accept");
+                        std::cerr << "accept" << strerror(errno) << " " << errno << std::endl;
                         continue;
                     }
                     fds.push_back({new_socket, POLLIN, 0});

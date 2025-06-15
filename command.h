@@ -46,10 +46,10 @@ struct Command {
         : type_(type), data_(data.begin(), data.end()){}
 
     Command(Type type, const std::string_view & str)
-    : type_(type), data_(str.begin(), str.end()){std::cout << "Command sv " << (int)type_ << " " << data_ << " " << data_.size() << std::endl;}
+    : type_(type), data_(str.begin(), str.end()){}
 
     Command(Type type, const std::string & str)
-    : type_(type), data_(str.begin(), str.end()){std::cout << "Command s " << (int)type_ << " " << data_ << " " << data_.size() << std::endl;}
+    : type_(type), data_(str.begin(), str.end()){}
 
     Command(size_t size, const PacketBuffer & data);
     
