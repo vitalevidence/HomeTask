@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <iostream>
 
-std::expected<Data::iterator, int> AESCipher::encrypt(Data::iterator plaintextStart, Data::iterator plaintextEnd,
+std::expected<Data::iterator, int> AESCipher::encryptBlock(Data::const_iterator plaintextStart, Data::const_iterator plaintextEnd,
                                                       Data::iterator ciphertextStart, Data::iterator ciphertextEnd)
 {
     if (!ctx)
@@ -13,6 +13,7 @@ std::expected<Data::iterator, int> AESCipher::encrypt(Data::iterator plaintextSt
     {
         return std::unexpected(-4);
     }
+
     if (ciphertextEnd - ciphertextStart < cipherBlockSize)
     {
         std::cerr << "Ciphertext buffer is too small for encryption " << (ciphertextEnd - ciphertextStart) << " < " << cipherBlockSize << std::endl;
@@ -28,6 +29,20 @@ std::expected<Data::iterator, int> AESCipher::encrypt(Data::iterator plaintextSt
     return ciphertextStart + len;
 }
 
+std::expected<Data::iterator, int> AESCipher::encrypt(Data::const_iterator plaintextStart, Data::const_iterator plaintextEnd,
+                                                      Data::iterator ciphertextStart, Data::iterator ciphertextEnd)
+{
+    auto encStart = ciphertextStart;
+    for(auto start = plaintextStart; start < plaintextEnd; start += cipherBlockSize) {
+        auto encryptedResult = encryptBlock(start, start + cipherBlockSize, encStart, ciphertextEnd);
+        if(!encryptedResult){
+            return encryptedResult;
+        }
+        encStart = encryptedResult.value();
+    }
+    return encStart;
+}
+
 std::expected<Data::iterator, int> AESCipher::encryptFinalize(Data::iterator ciphertextStart, Data::iterator ciphertextEnd)
 {
     if (!ctx || ciphertextEnd - ciphertextStart < cipherBlockSize)
@@ -35,7 +50,7 @@ std::expected<Data::iterator, int> AESCipher::encryptFinalize(Data::iterator cip
         return std::unexpected(-2);
     }
 
-    auto final_len = 0;
+    auto final_len = cipherBlockSize;
     if (1 != EVP_EncryptFinal_ex(*ctx, &(*ciphertextStart), &final_len))
     {
         handleErrors();
@@ -44,13 +59,23 @@ std::expected<Data::iterator, int> AESCipher::encryptFinalize(Data::iterator cip
     return ciphertextStart + final_len;
 }
 
-std::expected<Data::iterator, int> AESCipher::decrypt(Data::iterator ciphertextStart, Data::iterator ciphertextEnd, Data::iterator plaintextStart, Data::iterator plaintextEnd)
+std::expected<Data::iterator, int> AESCipher::decryptBlock(Data::const_iterator ciphertextStart, Data::const_iterator ciphertextEnd, Data::iterator plaintextStart, Data::iterator plaintextEnd)
 {
-    if (!ctx || ciphertextEnd - ciphertextStart != cipherBlockSize || plaintextEnd - plaintextStart < cipherBlockSize)
+    if (!ctx)
     {
-        return std::unexpected(-2);
+        return std::unexpected(-5);
     }
-
+    
+    if(ciphertextEnd - ciphertextStart != cipherBlockSize)
+    {
+        return std::unexpected(-4);
+    }
+    
+    if(plaintextEnd - plaintextStart < cipherBlockSize)
+    {
+        return std::unexpected(-3);
+    }
+    
     auto len = cipherBlockSize;
     if (1 != EVP_DecryptUpdate(*ctx, &(*plaintextStart), &len, &(*ciphertextStart), ciphertextEnd - ciphertextStart))
     {
@@ -60,18 +85,36 @@ std::expected<Data::iterator, int> AESCipher::decrypt(Data::iterator ciphertextS
     return plaintextStart + len;
 }
 
+std::expected<Data::iterator, int> AESCipher::decrypt(Data::const_iterator ciphertextStart, Data::const_iterator ciphertextEnd, Data::iterator plaintextStart, Data::iterator plaintextEnd)
+{
+    auto decStart = plaintextStart;
+    for(auto start = ciphertextStart; start != ciphertextEnd; start += cipherBlockSize) {
+        auto decryptedResult = decryptBlock(start, start + cipherBlockSize, decStart, plaintextEnd);
+        if(!decryptedResult){
+            return decryptedResult;
+        }
+        decStart = decryptedResult.value();
+    }
+    return decStart;
+}
+
 std::expected<Data::iterator, int> AESCipher::decryptFinalize(Data::iterator plaintextStart, Data::iterator plaintextEnd)
 {
-    if (!ctx || plaintextEnd - plaintextStart < cipherBlockSize)
+    if (!ctx)
     {
-        return std::unexpected(-2);
+        return std::unexpected(-5);
     }
 
-    auto final_len = 0;
+    if(plaintextEnd - plaintextStart < cipherBlockSize)
+    {
+        return std::unexpected(-14);
+    }
+
+    auto final_len = cipherBlockSize;
     if (1 != EVP_DecryptFinal_ex(*ctx, &(*plaintextStart), &final_len))
     {
         handleErrors();
-        return std::unexpected(-1);
+        return std::unexpected(-11);
     }
     return plaintextStart + final_len;
 }
@@ -147,12 +190,6 @@ std::expected<Data, int> RSACipher::encrypt(const Data &plaintext)
         handleErrors();
         return std::unexpected(-1);
     }
-    /*
-    if (EVP_PKEY_CTX_set_rsa_padding(*enc_ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
-    {
-        handleErrors();
-        return std::unexpected(-1);
-    }*/
     size_t outlen = 0;
     if (EVP_PKEY_encrypt(*enc_ctx, nullptr, &outlen, plaintext.data(), plaintext.size()) <= 0)
     {
@@ -183,12 +220,6 @@ std::expected<Data, int> RSACipher::decrypt(const Data &ciphertext)
         handleErrors();
         return std::unexpected(-1);
     }
-    /*
-    if (EVP_PKEY_CTX_set_rsa_padding(*dec_ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
-    {
-        handleErrors();
-        return std::unexpected(-1);
-    }*/
     size_t outlen = 0;
     if (EVP_PKEY_decrypt(*dec_ctx, nullptr, &outlen, ciphertext.data(), ciphertext.size()) <= 0)
     {

@@ -17,7 +17,7 @@ struct Command {
         BEGIN_FILE,
         RESUME_FILE,
         FILE_BLOCK,
-        END_FILE,
+        LAST_FILE_BLOCK,
         ERROR,
         ACK,
         EXIT,

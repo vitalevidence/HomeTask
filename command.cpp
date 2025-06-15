@@ -56,7 +56,7 @@ bool sendCommand(int sock, const Command & cmd) {
 std::expected<Data, int> WaitPacket(int sock, Command::Type type) 
 {
     std::array<pollfd, 1> fds = {{sock, POLLIN, 0}};
-    int ret = poll(fds.data(), fds.size(), 1000);//Configure timeout
+    auto ret = poll(fds.data(), fds.size(), 1000);//Configure timeout
     if (ret < 0) {
         std::cerr << "poll " << strerror(errno) << std::endl;
         return std::unexpected(-1);
@@ -72,8 +72,7 @@ std::expected<Data, int> WaitPacket(int sock, Command::Type type)
     }
 
     PacketBuffer buffer;
-    ssize_t bytes_read;
-    bytes_read = read(sock, buffer.data(), buffer.size());
+    auto bytes_read = read(sock, buffer.data(), buffer.size());
     //std::cout << "Reading from socket, bytes read: " << bytes_read << std::endl;
     if(bytes_read < 0) {
         std::cerr << "Failed to read from socket: " << strerror(errno) << std::endl;

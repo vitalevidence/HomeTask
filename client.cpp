@@ -69,9 +69,14 @@ ErrorCode run_client(const std::string_view & server_ip, const std::string_view 
             return ErrorCode::Authentication;
         }
     }
+
+    IV iv;
+    KEY key;
     { // Send IV and Key
         Data iv_key(IV_SIZE + KEY_SIZE);
-        std::generate(iv_key.begin(), iv_key.end(), []() { return static_cast<unsigned char>(std::rand() % 256); });   
+        std::generate(iv_key.begin(), iv_key.end(), []() { return static_cast<unsigned char>(std::rand() % 256); });
+        std::copy(iv_key.begin(), iv_key.begin() + IV_SIZE, iv.begin());
+        std::copy(iv_key.begin() + IV_SIZE, iv_key.end(), key.begin());
         auto encrypted_iv_key = rsa.encrypt(iv_key);
         if (!encrypted_iv_key) {
             std::cerr << "Failed to encrypt IV_KEY: " << encrypted_iv_key.error() << std::endl;
@@ -83,6 +88,14 @@ ErrorCode run_client(const std::string_view & server_ip, const std::string_view 
             std::cerr << "Failed to send IV_KEY command" << std::endl;
             return ErrorCode::Authentication;
         }
+    
+    }
+
+    AESCipher aes_cipher;
+    auto init_result = aes_cipher.init(iv, key, AESCipher::OperationMode::Encrypt);
+    if (!init_result) {
+        std::cerr << "Failed to initialize AES cipher: " << init_result.error() << std::endl;
+        return ErrorCode::AES;
     }
 
     std::ifstream infile(filename.data(), std::ios::binary);
@@ -97,21 +110,35 @@ ErrorCode run_client(const std::string_view & server_ip, const std::string_view 
         std::cerr << "Failed to send BEGIN_FILE command" << std::endl;
         return ErrorCode::Network;
     }
-    PacketBuffer buffer;
-    constexpr size_t FileBlockSize = ((buffer.size() - 1) / BLOCK_SIZE - 1) * BLOCK_SIZE; 
+    std::vector<unsigned char> encBuffer(BUFFER_SIZE - 1);
+    constexpr size_t FileBlockSize = ((BUFFER_SIZE - 1) / BLOCK_SIZE - 1) * BLOCK_SIZE; 
+    std::vector<unsigned char> buffer(FileBlockSize);
     while (infile) {
         infile.read(reinterpret_cast<char*>(buffer.data()), FileBlockSize); //Dont't forget 1 byte for command type
-        std::streamsize bytes = infile.gcount();
+        auto bytes = infile.gcount();
         if (bytes > 0) {
-            Command cmd(Command::Type::FILE_BLOCK, std::vector<unsigned char>(buffer.data(), buffer.data() + bytes));
+            auto endEnc = aes_cipher.encrypt(buffer.begin(), buffer.begin() + bytes, encBuffer.begin(), encBuffer.end());
+            if (!endEnc) {
+                std::cerr << "Failed to encrypt: " << endEnc.error() << std::endl;
+                return ErrorCode::AES;
+            }
+
+            if(!infile){ //Last block
+                endEnc = aes_cipher.encryptFinalize(*endEnc, encBuffer.end());
+                if (!endEnc) {
+                    std::cerr << "Failed to finalize encryption: " << endEnc.error() << std::endl;
+                    return ErrorCode::AES;
+                }
+                //std::cout << "Last block size: " << (*endEnc - encBuffer.begin()) << std::endl;
+            }
+
+            Command cmd(infile ? Command::Type::FILE_BLOCK : Command::Type::LAST_FILE_BLOCK, std::move(std::vector<unsigned char>(encBuffer.begin(), *endEnc)));
             if(!sendCommandWaitAck(*sock, cmd)){
                 std::cerr << "Failed to send FILE_BLOCK command" << std::endl;
                 return ErrorCode::Network;
             }
         }
     }
-    Command end_cmd(Command::Type::END_FILE);
-    sendCommandWaitAck(*sock, end_cmd);
     std::cout << "File sent"<< std::endl;
     infile.close();
     return ErrorCode::Success;

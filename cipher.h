@@ -24,12 +24,20 @@ public:
     };
     std::expected<int, bool> init(const IV & iv, const KEY &key, OperationMode mode);
 
-    std::expected<Data::iterator, int> encrypt(Data::iterator plaintextStart, Data::iterator plaintextEnd,
+    std::expected<Data::iterator, int> encryptBlock(Data::const_iterator plaintextStart, Data::const_iterator plaintextEnd,
                                       Data::iterator ciphertextStart, Data::iterator ciphertextEnd);
+
+    std::expected<Data::iterator, int> encrypt(Data::const_iterator plaintextStart, Data::const_iterator plaintextEnd,
+                                      Data::iterator ciphertextStart, Data::iterator ciphertextEnd);
+
     std::expected<Data::iterator, int> encryptFinalize(Data::iterator ciphertextStart, Data::iterator ciphertextEnd);
 
-    std::expected<Data::iterator, int> decrypt(Data::iterator ciphertextStart, Data::iterator ciphertextEnd, 
+    std::expected<Data::iterator, int> decryptBlock(Data::const_iterator ciphertextStart, Data::const_iterator ciphertextEnd, 
                                       Data::iterator plaintextStart, Data::iterator plaintextEnd);
+
+    std::expected<Data::iterator, int> decrypt(Data::const_iterator ciphertextStart, Data::const_iterator ciphertextEnd, 
+                                      Data::iterator plaintextStart, Data::iterator plaintextEnd);
+
     std::expected<Data::iterator, int> decryptFinalize(Data::iterator plaintextStart, Data::iterator plaintextEnd);
     
 private:

@@ -112,8 +112,9 @@ bool ProcessCommand(const Command &cmd, ServerContext &server_ctx, RSACipher & r
         //std::cout << "Received FILE_BLOCK command with data size: " << cmd.asData().size() << std::endl;
         server_ctx.writeFileBlock(cmd.asData());
         break;
-    case Command::Type::END_FILE:
-        std::cout << "Received END_FILE command" << std::endl;
+    case Command::Type::LAST_FILE_BLOCK:
+        std::cout << "Received LAST_FILE_BLOCK command  with data size: " << cmd.asData().size() << std::endl;
+        server_ctx.writeFileBlock(cmd.asData(), true);
         server_ctx.closeFile();
         break;
     case Command::Type::HELLO:
