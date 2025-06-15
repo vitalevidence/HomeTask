@@ -104,7 +104,10 @@ ErrorCode run_client(const std::string_view & server_ip, const std::string_view 
         return ErrorCode::IO;
     }
 
-    Command begin_cmd(Command::Type::BEGIN_FILE, std::string_view("received_file"));
+    const uint32_t file_size = std::filesystem::file_size(filename);//Size stored in 4 bytes!
+    std::string fileDataStr{"1234received_file"};
+    memcpy(fileDataStr.data(), &file_size, sizeof(file_size)); 
+    Command begin_cmd(Command::Type::BEGIN_FILE, fileDataStr);
     if(!sendCommandWaitAck(*sock, begin_cmd))
     {
         std::cerr << "Failed to send BEGIN_FILE command" << std::endl;

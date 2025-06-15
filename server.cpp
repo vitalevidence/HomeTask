@@ -101,8 +101,8 @@ bool ProcessCommand(const Command &cmd, ServerContext &server_ctx, RSACipher & r
             return false;
         break;
     case Command::Type::BEGIN_FILE:
-        std::cout << "Received BEGIN_FILE command with filename: " << cmd.asString() << std::endl;
-        server_ctx.setFilename(cmd.asString());
+        std::cout << "Received BEGIN_FILE command with filedata: " << cmd.asString() << std::endl;
+        server_ctx.setFileData(cmd.asString());
         break;
     case Command::Type::RESUME_FILE:
         std::cout << "Received RESUME_FILE command with filename: " << cmd.asString() << std::endl;

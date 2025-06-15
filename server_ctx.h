@@ -22,14 +22,20 @@ struct ServerContext
         last_access_time = std::time(nullptr);
     }
 
-    void setFilename(const std::string &new_filename)
+    void setFileData(const std::string &new_filename)
     {
-        filename = new_filename;
+        if (new_filename.size() < sizeof(file_size) + 1)
+        {
+            throw std::invalid_argument("Filename is too short to contain file size.");
+        }
+        memcpy(&file_size, new_filename.data(), sizeof(file_size)); // Copy file size from the string
+        filename =std::string(new_filename.begin() + sizeof(file_size), new_filename.end());
         file_stream.open(filename, std::ios::out | std::ios::binary);
         if (!file_stream.is_open())
         {
             throw std::runtime_error("Failed to open file: " + filename);
         }
+        std::cout << "Opened " << filename << " expected " << file_size << " bytes" << std::endl;
         updateAccessTime();
     }
 
@@ -66,8 +72,11 @@ struct ServerContext
                     throw std::runtime_error("Failed to deencrypt last block: " + std::to_string(decrypted_block.error()));
                 }
             }
-            file_stream.write(reinterpret_cast<const char *>(&(*decBuffer.begin())),
-                              static_cast<std::streamsize>(decrypted_block.value() - decBuffer.begin()));
+            auto left = std::min(file_size, (decltype(file_size))(decrypted_block.value() - decBuffer.begin()));
+            //std::cout << "Written " << left << " bytes" << std::endl;
+            file_stream.write(reinterpret_cast<const char *>(&(*decBuffer.begin())), left);
+            file_size -= left;
+            
         }
         else
         {
@@ -121,4 +130,5 @@ struct ServerContext
 private:
     std::optional<AESCipher> aes_cipher;  // Optional AES cipher for encryption/decryption
     std::vector<unsigned char> decBuffer; // Buffer for decrypted data
+    uint32_t file_size = 0; // Size of the file being processed
 };

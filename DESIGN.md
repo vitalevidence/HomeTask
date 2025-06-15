@@ -15,7 +15,7 @@ WAIT for ACK
 Generate IV & KEY
 (random 32 bytes)  ---->    Try init AES chiper should be ok, ACK
 
-File name,
+File name,File Size
 BEGIN_FILE         ---->    ACK, Create file
 
 
@@ -25,7 +25,7 @@ FILE_BLOCK,
 encrypted data     ---->   Try decrypt, and save to disk. If ok ACK
 .....
 
-LAS_FILE_BLOCK
+LAST_FILE_BLOCK
 encrypted data     ---->   Try decrypt, and save to disk. If ok ACK
 
 disconnect
